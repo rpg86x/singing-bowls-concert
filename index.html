@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Singing Bowls Concert</title>
+<link rel="icon" href="logo.png">
+<style>
+  :root {
+    --bg1: #15110d; --bg2: #2a1f16; --text: #f3e9dc; --muted: #b9a892;
+    --accent: #e2b66b; --panel: rgba(255, 240, 220, .06); --line: rgba(255, 240, 220, .14);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(ellipse at 50% 35%, var(--bg2), var(--bg1) 70%);
+    color: var(--text); font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; overflow: hidden; user-select: none;
+  }
+  header { position: relative; text-align: center; padding: 22px 16px 0; }
+  #lang {
+    position: absolute; right: 16px; top: 14px; z-index: 4;
+    background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 10px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  #lang option, #lang optgroup { background: var(--bg2); color: var(--text); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  header h1 { margin: 0; font-weight: 300; letter-spacing: .3em; font-size: 15px; text-transform: uppercase; color: var(--muted); }
+  #stage { position: relative; flex: 1; min-height: 260px; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; touch-action: none; }
+  .nav {
+    position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+    width: 58px; height: 58px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-size: 30px; line-height: 1; cursor: pointer;
+    display: grid; place-items: center; transition: background .2s, transform .15s;
+  }
+  .nav:hover { background: rgba(255, 240, 220, .14); }
+  .nav:active { transform: translateY(-50%) scale(.92); }
+  #prev { left: max(16px, 4vw); } #next { right: max(16px, 4vw); }
+  #info { text-align: center; padding: 0 16px; }
+  #name { font-size: 30px; font-weight: 300; margin: 0; }
+  #meta { color: var(--accent); font-size: 14px; letter-spacing: .08em; margin-top: 4px; }
+  #desc { color: var(--muted); font-size: 14px; max-width: 520px; margin: 8px auto 0; min-height: 2.6em; }
+  #dots { display: flex; justify-content: center; gap: 8px; margin: 14px 0 4px; }
+  #dots button { width: 9px; height: 9px; padding: 0; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; }
+  #dots button.on { background: var(--accent); transform: scale(1.3); }
+  #controls {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px 22px;
+    padding: 14px 16px 10px;
+  }
+  .btn {
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    padding: 9px 18px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .btn:hover { background: rgba(255, 240, 220, .14); }
+  .btn.on { background: var(--accent); color: #23180c; border-color: var(--accent); }
+  label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  input[type=range] { width: 110px; accent-color: var(--accent); }
+  footer { display: flex; justify-content: space-between; gap: 12px; padding: 6px 16px 12px; font-size: 12px; color: var(--muted); opacity: .75; }
+  #picker { display: none; text-align: center; padding: 0 16px; }
+  body.concert #picker { display: block; }
+  body.concert #info, body.concert .nav { display: none; }
+  #pickTitle { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  #chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 920px; margin: 0 auto; }
+  .chip {
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+    padding: 5px 11px; border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .chip.on { background: var(--accent); color: #23180c; border-color: var(--accent); }
+  .chip:disabled { opacity: .35; cursor: default; }
+  kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-family: inherit; }
+  #start {
+    position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+    background: rgba(10, 8, 6, .55); backdrop-filter: blur(3px); font-size: 17px; color: var(--text); cursor: pointer;
+  }
+  #start span { border: 1px solid var(--line); background: var(--panel); padding: 14px 26px; border-radius: 999px; }
+  @media (max-width: 600px) {
+    .nav { width: 46px; height: 46px; font-size: 24px; }
+    #name { font-size: 24px; }
+    footer .keys { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 data-t="app"></h1>
+  <select id="lang" aria-label="Language">
+    <option value="en">English</option>
+    <option value="nl">Nederlands</option>
+    <optgroup label="More languages">
+      <option value="de">Deutsch</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+    </optgroup>
+  </select>
+</header>
+
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <button class="nav" id="prev">‹</button>
+  <button class="nav" id="next">›</button>
+  <div id="start"><span data-t="start"></span></div>
+</div>
+
+<div id="info">
+  <h2 id="name"></h2>
+  <div id="meta"></div>
+  <div id="desc"></div>
+  <div id="dots"></div>
+</div>
+
+<div id="picker">
+  <div id="pickTitle" data-t="pick"></div>
+  <div id="chips"></div>
+</div>
+
+<div id="controls">
+  <button class="btn" id="concert"><span data-t="concert"></span> <kbd>C</kbd></button>
+  <button class="btn" id="strike"><span data-t="strike"></span> <kbd data-t="space"></kbd></button>
+  <button class="btn" id="rub"><span data-t="rub"></span> <kbd>W</kbd></button>
+  <button class="btn" id="hush"><span data-t="hush"></span> <kbd>S</kbd></button>
+  <label><span data-t="volume"></span> <input type="range" id="vol" min="0" max="1" step="0.01" value="0.8"></label>
+  <label><span data-t="reverb"></span> <input type="range" id="verb" min="0" max="1" step="0.01" value="0.45"></label>
+</div>
+
+<footer>
+  <span class="keys" data-t="keys"></span>
+  <span><a href="https://urbantechmonk.gumroad.com/coffee" target="_blank" rel="noopener" data-t="donate"></a> · <span data-t="app"></span> 1.0</span>
+</footer>
+
+<script>
+// ---------- Schalen ----------
+// partials: [frequentieverhouding, sterkte, nagalm-factor t.o.v. grondtoon]
+const TIBETAN = [[1, 1, 1], [2.76, .5, .55], [5.4, .25, .3], [8.9, .12, .18], [13.3, .05, .1]];
+const tib = (s) => TIBETAN.map(([r, a, d], i) => [i ? r * s : 1, a, d]);
+const BOWLS = [
+  { id: 'jambati', type: 'jambati', note: 'G2', f: 98.0, chakra: 'earth', decay: 45, beat: .45, size: 1.22, depth: .62,
+    partials: [[1, 1, 1], [2.68, .65, .6], [5.0, .3, .35], [8.2, .15, .2], [12.0, .06, .12]], metal: ['#3d2410', '#94622e', '#e3b673'], cushion: '#5a3a1a' },
+  { id: 'c3', type: 'large', note: 'C3', f: 130.81, chakra: 'root', decay: 32, beat: .7, size: 1.12, depth: .8,
+    partials: tib(1.0), metal: ['#4a2c14', '#a8743a', '#f0c987'], cushion: '#7a1f1f' },
+  { id: 'om', type: 'om', note: 'C♯3', f: 136.1, chakra: 'om', decay: 32, beat: .8, size: 1.1, depth: .78,
+    partials: tib(1.0), metal: ['#4a2d15', '#ad7a3e', '#f2cb8a'], cushion: '#a8650f' },
+  { id: 'd3', type: 'tibetan', note: 'D3', f: 146.83, chakra: 'sacral', decay: 28, beat: 1.1, size: 1.05, depth: .78,
+    partials: tib(.99), metal: ['#4d2a12', '#b0783a', '#f4cf8f'], cushion: '#b5531c' },
+  { id: 'e3', type: 'tibetan', note: 'E3', f: 164.81, chakra: 'solar', decay: 26, beat: 1.4, size: 1.0, depth: .76,
+    partials: tib(1.02), metal: ['#51331a', '#b98a45', '#f7dc9c'], cushion: '#c49a1a' },
+  { id: 'f3', type: 'tibetan', note: 'F3', f: 174.61, chakra: 'heart', decay: 25, beat: .9, size: .97, depth: .74,
+    partials: tib(.98), metal: ['#47311b', '#a98448', '#ecd39d'], cushion: '#2f6b3a' },
+  { id: 'g3', type: 'tibetan', note: 'G3', f: 196.0, chakra: 'throat', decay: 23, beat: 1.8, size: .93, depth: .72,
+    partials: tib(1.01), metal: ['#4b2e17', '#b07c40', '#f2cd8e'], cushion: '#2a5d8a' },
+  { id: 'a3', type: 'tibetan', note: 'A3', f: 220.0, chakra: 'third', decay: 21, beat: 1.2, size: .88, depth: .7,
+    partials: tib(1.03), metal: ['#45301d', '#a6854f', '#e9d6a6'], cushion: '#3b3486' },
+  { id: 'b3', type: 'tibetan', note: 'B3', f: 246.94, chakra: 'crown', decay: 19, beat: 2.2, size: .84, depth: .68,
+    partials: tib(.995), metal: ['#4a2f1a', '#b38448', '#f4d79e'], cushion: '#6b2f7d' },
+  { id: 'mani', type: 'mani', note: 'A4', f: 440.0, chakra: 'clarity', decay: 15, beat: 2.4, size: .74, depth: .7,
+    partials: tib(1.02), metal: ['#5a3a1e', '#c4924e', '#fbe2a8'], cushion: '#b9a27a' },
+  { id: 'crystal', type: 'crystal', note: 'C4', f: 261.63, chakra: 'quartz', decay: 40, beat: .5, size: 1.08, depth: .9, crystal: true,
+    partials: [[1, 1, 1], [2.92, .1, .5], [5.8, .03, .25], [9.6, .01, .15]], metal: ['#a9aeb5', '#e4e7ea', '#ffffff'], cushion: '#3a3a40' },
+  { id: 'rose', type: 'rose', note: 'A3', f: 216.0, chakra: 'a432', decay: 42, beat: .4, size: 1.0, depth: .9, crystal: true,
+    partials: [[1, 1, 1], [2.92, .1, .5], [5.8, .03, .25], [9.6, .01, .15]], metal: ['#bf9aa0', '#efd8db', '#fff6f7'], cushion: '#4a3a3e' },
+  { id: 'keisu', type: 'keisu', note: 'F♯3', f: 185.0, chakra: 'zen', decay: 30, beat: 1.0, size: 1.05, depth: .95,
+    partials: [[1, 1, 1], [2.7, .6, .6], [5.1, .35, .4], [8.0, .2, .25], [11.6, .1, .15]], metal: ['#1c130d', '#4a3424', '#b8925a'], cushion: '#5e1620' },
+  { id: 'rin', type: 'rin', note: 'E5', f: 659.26, chakra: 'temple', decay: 13, beat: 2.6, size: .7, depth: 1.0,
+    partials: [[1, 1, 1], [2.65, .7, .6], [4.9, .45, .4], [7.6, .28, .25], [10.9, .14, .15]], metal: ['#2a1a10', '#6e4a2a', '#c99a62'], cushion: '#9c1c2a' },
+];
+
+// ---------- Talen ----------
+const CKEYS = (st, num, sing, multi) => `<kbd>1</kbd>–<kbd>8</kbd> ${st} · <kbd>Shift</kbd> + ${num} ${sing} · ${multi}`;
+const KEYS = (or, sw, ch, rim) => `<kbd>&lt;</kbd> <kbd>&gt;</kbd> ${or} <kbd>←</kbd> <kbd>→</kbd> ${sw} · <kbd>1</kbd>–<kbd>${BOWLS.length}</kbd> ${ch} · ${rim}`;
+const LANGS = {
+  en: {
+    app: 'Singing Bowls Concert', prev: 'Previous bowl (< or ←)', next: 'Next bowl (> or →)', start: 'Click to open the singing bowls',
+    strike: 'Strike', space: 'space', rub: 'Let it sing', hush: 'Silence', volume: 'Volume', reverb: 'Reverb',
+    keys: KEYS('or', 'switch', 'choose', 'tap the bowl to strike it · draw circles around it to make it sing'), donate: '☕ Buy me a coffee', more: 'More languages',
+    concert: 'Concert', pick: 'Choose up to 8 bowls for your concert:', strikeAll: 'Strike all', singAll: 'All sing',
+    ckeys: CKEYS('strike', 'number', 'let it sing', 'play several bowls at once with several fingers'),
+    type: { large: 'Large Tibetan bowl', tibetan: 'Tibetan bowl', crystal: 'Crystal bowl', rin: 'Japanese rin', jambati: 'Jambati bowl', om: 'Om bowl', mani: 'Mani bowl', rose: 'Rose quartz bowl', keisu: 'Japanese keisu' },
+    chakra: { root: 'Root', sacral: 'Sacral', solar: 'Solar plexus', heart: 'Heart', throat: 'Throat', third: 'Third eye', crown: 'Crown', quartz: 'Quartz', temple: 'Temple bell', earth: 'Earth', om: 'Om', clarity: 'Clarity', a432: 'A = 432 Hz', zen: 'Zen' },
+    desc: {
+      c3: 'Deep and grounding. Hand-hammered bronze with a long, slowly undulating resonance.',
+      d3: 'Warm and flowing, with a gentle beating between the overtones.',
+      e3: 'Bright and powerful. A good bowl to open a session with.',
+      f3: 'Round and open. The overtones keep singing softly for a long time.',
+      g3: 'Singing and light, with a lively shimmer.',
+      a3: 'Fine and focused. Lovely for meditation and concentration.',
+      b3: 'The smallest of the series: clear and floating.',
+      crystal: 'An almost pure tone of frosted quartz. Best when you let it sing.',
+      rin: 'Small, deep temple bowl with a clear, penetrating sound.',
+      jambati: 'The giant of the set. A wide, heavy bowl with a deep hum you feel more than hear.',
+      om: 'Tuned to 136.1 Hz, the "Om" tone of the earth year. Calm and centring.',
+      mani: 'A small, bright Nepalese bowl. Quick to speak, with a sparkling shimmer.',
+      rose: 'Rose quartz bowl tuned to A = 432 Hz. Soft, warm and very long.',
+      keisu: 'Large, dark temple bowl from Zen temples. Solemn and deep, with a clear core.',
+    },
+  },
+  nl: {
+    app: 'Singing Bowls Concert', prev: 'Vorige schaal (< of ←)', next: 'Volgende schaal (> of →)', start: 'Klik om de klankschalen te openen',
+    strike: 'Aanslaan', space: 'spatie', rub: 'Laten zingen', hush: 'Stilte', volume: 'Volume', reverb: 'Galm',
+    keys: KEYS('of', 'wisselen', 'kiezen', 'tik op de schaal om aan te slaan · trek er cirkels omheen om haar te laten zingen'), donate: '☕ Trakteer me op een koffie', more: 'Meer talen',
+    concert: 'Concert', pick: 'Kies tot 8 schalen voor je concert:', strikeAll: 'Alles aanslaan', singAll: 'Alles laten zingen',
+    ckeys: CKEYS('aanslaan', 'cijfer', 'laten zingen', 'bespeel meerdere schalen tegelijk met meerdere vingers'),
+    type: { large: 'Grote Tibetaanse schaal', tibetan: 'Tibetaanse schaal', crystal: 'Kristallen schaal', rin: 'Japanse rin', jambati: 'Jambati-schaal', om: 'Om-schaal', mani: 'Mani-schaal', rose: 'Rozenkwarts schaal', keisu: 'Japanse keisu' },
+    chakra: { root: 'Wortel', sacral: 'Sacraal', solar: 'Zonnevlecht', heart: 'Hart', throat: 'Keel', third: 'Derde oog', crown: 'Kruin', quartz: 'Kwarts', temple: 'Tempelklok', earth: 'Aarde', om: 'Om', clarity: 'Helderheid', a432: 'A = 432 Hz', zen: 'Zen' },
+    desc: {
+      c3: 'Diep en aardend. Handgehamerd brons met een lange, langzaam golvende nagalm.',
+      d3: 'Warm en vloeiend, met een zachte zweving tussen de boventonen.',
+      e3: 'Helder en krachtig. Een goede schaal om een sessie mee te openen.',
+      f3: 'Rond en open. De boventonen blijven lang zacht doorzingen.',
+      g3: 'Zingend en licht, met een levendige zweving.',
+      a3: 'Fijn en geconcentreerd. Mooi voor meditatie en focus.',
+      b3: 'De kleinste uit de reeks: helder en zwevend.',
+      crystal: 'Bijna zuivere toon van gezandstraald kwarts. Laat haar vooral zingen.',
+      rin: 'Kleine, diepe tempelschaal met een heldere, doordringende klank.',
+      jambati: 'De reus van de set. Een brede, zware schaal met een diepe brom die je meer voelt dan hoort.',
+      om: 'Gestemd op 136,1 Hz, de "Om"-toon van het aardjaar. Rustig en centrerend.',
+      mani: 'Een kleine, heldere Nepalese schaal. Spreekt snel aan, met een sprankelende zweving.',
+      rose: 'Schaal van rozenkwarts, gestemd op A = 432 Hz. Zacht, warm en heel lang.',
+      keisu: 'Grote, donkere tempelschaal uit zentempels. Plechtig en diep, met een heldere kern.',
+    },
+  },
+  de: {
+    app: 'Singing Bowls Concert', prev: 'Vorherige Schale (< oder ←)', next: 'Nächste Schale (> oder →)', start: 'Klicken, um die Klangschalen zu öffnen',
+    strike: 'Anschlagen', space: 'Leertaste', rub: 'Singen lassen', hush: 'Stille', volume: 'Lautstärke', reverb: 'Hall',
+    keys: KEYS('oder', 'wechseln', 'wählen', 'Schale antippen zum Anschlagen · Kreise um sie ziehen, damit sie singt'), donate: '☕ Spendier mir einen Kaffee', more: 'Weitere Sprachen',
+    concert: 'Konzert', pick: 'Wähle bis zu 8 Schalen für dein Konzert:', strikeAll: 'Alle anschlagen', singAll: 'Alle singen lassen',
+    ckeys: CKEYS('anschlagen', 'Zahl', 'singen lassen', 'spiele mehrere Schalen gleichzeitig mit mehreren Fingern'),
+    type: { large: 'Große tibetische Klangschale', tibetan: 'Tibetische Klangschale', crystal: 'Kristallklangschale', rin: 'Japanische Rin', jambati: 'Jambati-Klangschale', om: 'Om-Klangschale', mani: 'Mani-Klangschale', rose: 'Rosenquarz-Klangschale', keisu: 'Japanische Keisu' },
+    chakra: { root: 'Wurzel', sacral: 'Sakral', solar: 'Solarplexus', heart: 'Herz', throat: 'Hals', third: 'Drittes Auge', crown: 'Krone', quartz: 'Quarz', temple: 'Tempelglocke', earth: 'Erde', om: 'Om', clarity: 'Klarheit', a432: 'A = 432 Hz', zen: 'Zen' },
+    desc: {
+      c3: 'Tief und erdend. Handgehämmerte Bronze mit langem, langsam wogendem Nachklang.',
+      d3: 'Warm und fließend, mit sanfter Schwebung zwischen den Obertönen.',
+      e3: 'Hell und kraftvoll. Eine gute Schale, um eine Sitzung zu beginnen.',
+      f3: 'Rund und offen. Die Obertöne singen lange leise nach.',
+      g3: 'Singend und leicht, mit lebhafter Schwebung.',
+      a3: 'Fein und konzentriert. Schön für Meditation und Fokus.',
+      b3: 'Die kleinste der Reihe: klar und schwebend.',
+      crystal: 'Fast reiner Ton aus sandgestrahltem Quarz. Am schönsten, wenn sie singt.',
+      rin: 'Kleine, tiefe Tempelschale mit klarem, durchdringendem Klang.',
+      jambati: 'Der Riese des Sets. Eine breite, schwere Schale mit tiefem Brummen, das man mehr spürt als hört.',
+      om: 'Gestimmt auf 136,1 Hz, den „Om“-Ton des Erdjahres. Ruhig und zentrierend.',
+      mani: 'Eine kleine, helle nepalesische Schale. Spricht schnell an, mit funkelnder Schwebung.',
+      rose: 'Rosenquarz-Schale, gestimmt auf A = 432 Hz. Weich, warm und sehr lang.',
+      keisu: 'Große, dunkle Tempelschale aus Zen-Tempeln. Feierlich und tief, mit klarem Kern.',
+    },
+  },
+  fr: {
+    app: 'Singing Bowls Concert', prev: 'Bol précédent (< ou ←)', next: 'Bol suivant (> ou →)', start: 'Cliquez pour ouvrir les bols chantants',
+    strike: 'Frapper', space: 'espace', rub: 'Faire chanter', hush: 'Silence', volume: 'Volume', reverb: 'Réverb',
+    keys: KEYS('ou', 'changer', 'choisir', 'touchez le bol pour le frapper · tracez des cercles autour pour le faire chanter'), donate: '☕ Offrez-moi un café', more: 'Autres langues',
+    concert: 'Concert', pick: 'Choisissez jusqu’à 8 bols pour votre concert :', strikeAll: 'Tout frapper', singAll: 'Tout faire chanter',
+    ckeys: CKEYS('frapper', 'chiffre', 'faire chanter', 'jouez plusieurs bols à la fois avec plusieurs doigts'),
+    type: { large: 'Grand bol tibétain', tibetan: 'Bol tibétain', crystal: 'Bol en cristal', rin: 'Rin japonais', jambati: 'Bol Jambati', om: 'Bol Om', mani: 'Bol Mani', rose: 'Bol en quartz rose', keisu: 'Keisu japonais' },
+    chakra: { root: 'Racine', sacral: 'Sacré', solar: 'Plexus solaire', heart: 'Cœur', throat: 'Gorge', third: 'Troisième œil', crown: 'Couronne', quartz: 'Quartz', temple: 'Cloche de temple', earth: 'Terre', om: 'Om', clarity: 'Clarté', a432: 'La = 432 Hz', zen: 'Zen' },
+    desc: {
+      c3: 'Profond et ancrant. Bronze martelé à la main, avec une longue résonance ondulante.',
+      d3: 'Chaud et fluide, avec un doux battement entre les harmoniques.',
+      e3: 'Clair et puissant. Un bon bol pour ouvrir une séance.',
+      f3: 'Rond et ouvert. Les harmoniques chantent doucement très longtemps.',
+      g3: 'Chantant et léger, avec une vibration vive.',
+      a3: 'Fin et concentré. Idéal pour la méditation et la concentration.',
+      b3: 'Le plus petit de la série : clair et aérien.',
+      crystal: 'Un son presque pur de quartz dépoli. À faire chanter avant tout.',
+      rin: 'Petit bol de temple profond, au son clair et pénétrant.',
+      jambati: 'Le géant de la série. Un bol large et lourd, au bourdonnement profond qu’on ressent plus qu’on ne l’entend.',
+      om: 'Accordé sur 136,1 Hz, le son « Om » de l’année terrestre. Calme et centrant.',
+      mani: 'Un petit bol népalais brillant. Réactif, avec une vibration scintillante.',
+      rose: 'Bol en quartz rose accordé sur La = 432 Hz. Doux, chaud et très long.',
+      keisu: 'Grand bol sombre des temples zen. Solennel et profond, avec un cœur clair.',
+    },
+  },
+  es: {
+    app: 'Singing Bowls Concert', prev: 'Cuenco anterior (< o ←)', next: 'Cuenco siguiente (> o →)', start: 'Haz clic para abrir los cuencos',
+    strike: 'Golpear', space: 'espacio', rub: 'Hacer cantar', hush: 'Silencio', volume: 'Volumen', reverb: 'Reverb',
+    keys: KEYS('o', 'cambiar', 'elegir', 'toca el cuenco para golpearlo · dibuja círculos a su alrededor para hacerlo cantar'), donate: '☕ Invítame a un café', more: 'Más idiomas',
+    concert: 'Concierto', pick: 'Elige hasta 8 cuencos para tu concierto:', strikeAll: 'Golpear todos', singAll: 'Todos cantan',
+    ckeys: CKEYS('golpear', 'número', 'hacer cantar', 'toca varios cuencos a la vez con varios dedos'),
+    type: { large: 'Gran cuenco tibetano', tibetan: 'Cuenco tibetano', crystal: 'Cuenco de cristal', rin: 'Rin japonés', jambati: 'Cuenco Jambati', om: 'Cuenco Om', mani: 'Cuenco Mani', rose: 'Cuenco de cuarzo rosa', keisu: 'Keisu japonés' },
+    chakra: { root: 'Raíz', sacral: 'Sacro', solar: 'Plexo solar', heart: 'Corazón', throat: 'Garganta', third: 'Tercer ojo', crown: 'Corona', quartz: 'Cuarzo', temple: 'Campana de templo', earth: 'Tierra', om: 'Om', clarity: 'Claridad', a432: 'La = 432 Hz', zen: 'Zen' },
+    desc: {
+      c3: 'Profundo y enraizante. Bronce martillado a mano con una resonancia larga y ondulante.',
+      d3: 'Cálido y fluido, con un suave batido entre los armónicos.',
+      e3: 'Brillante y potente. Un buen cuenco para abrir una sesión.',
+      f3: 'Redondo y abierto. Los armónicos siguen cantando suavemente mucho tiempo.',
+      g3: 'Cantarín y ligero, con una vibración viva.',
+      a3: 'Fino y concentrado. Ideal para meditar y enfocarse.',
+      b3: 'El más pequeño de la serie: claro y flotante.',
+      crystal: 'Un tono casi puro de cuarzo esmerilado. Déjalo cantar.',
+      rin: 'Pequeño cuenco de templo, profundo, de sonido claro y penetrante.',
+      jambati: 'El gigante del conjunto. Un cuenco ancho y pesado, con un zumbido profundo que se siente más que se oye.',
+      om: 'Afinado a 136,1 Hz, el tono «Om» del año terrestre. Tranquilo y centrador.',
+      mani: 'Un cuenco nepalí pequeño y brillante. Responde rápido, con una vibración chispeante.',
+      rose: 'Cuenco de cuarzo rosa afinado en La = 432 Hz. Suave, cálido y muy largo.',
+      keisu: 'Gran cuenco oscuro de los templos zen. Solemne y profundo, con un núcleo claro.',
+    },
+  },
+};
+
+// ---------- Voorkeuren ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sbconcert.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('sbconcert.' + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- Audio ----------
+let ctx, bus, master, wet, noiseBuf;
+const voices = [];          // aangeslagen klanken, oudste eerst
+const rubs = new Map();     // zingende schalen: index → wrijfklank (in een concert meerdere tegelijk)
+
+function initAudio() {
+  if (ctx) return;
+  ctx = new AudioContext();
+  master = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -10; comp.ratio.value = 4;
+  master.connect(comp).connect(ctx.destination);
+  bus = ctx.createGain();
+  const dry = ctx.createGain(); dry.gain.value = .8;
+  bus.connect(dry).connect(master);
+  const conv = ctx.createConvolver(); conv.buffer = impulse(4.5);
+  wet = ctx.createGain();
+  bus.connect(conv).connect(wet).connect(master);
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  applyMix();
+}
+
+// Synthetische zaalgalm: stereo ruis die exponentieel uitsterft
+function impulse(sec) {
+  const len = Math.floor(ctx.sampleRate * sec), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+  }
+  return buf;
+}
+
+function applyMix() {
+  if (!ctx) return;
+  master.gain.setTargetAtTime(+vol.value * .9, ctx.currentTime, .05);
+  wet.gain.setTargetAtTime(+verb.value * 1.1, ctx.currentTime, .05);
+}
+
+// Twee licht verstemde sinussen per boventoon geven de typische zweving van een schaal
+function partialPair(b, ratio, amp, out, nodes) {
+  const f = b.f * ratio, spread = b.beat * Math.sqrt(ratio) / 2;
+  for (const d of [-spread, spread]) {
+    if (f + d > ctx.sampleRate / 2.2) continue;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f + d; g.gain.value = amp / 2;
+    o.connect(g).connect(out); o.start(); nodes.push(o);
+  }
+}
+
+function strike(i, brightness = .6, force = 1) {
+  initAudio();
+  const b = BOWLS[i], t = ctx.currentTime, nodes = [];
+  const out = ctx.createGain(); out.connect(bus);
+  b.partials.forEach(([ratio, amp, df], k) => {
+    const env = ctx.createGain(), a = amp * force * .32 * (k ? .35 + brightness * 1.3 : 1);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(a, t + .004 + k * .002);
+    env.gain.setTargetAtTime(0, t + .01, (b.decay * df) / 5);
+    env.connect(out);
+    partialPair(b, ratio, 1, env, nodes);
+  });
+  // Tik van de klopper
+  const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+  n.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = 1800 + brightness * 3000; bp.Q.value = 1.2;
+  ng.gain.setValueAtTime(.12 * force * (.4 + brightness), t); ng.gain.exponentialRampToValueAtTime(.0001, t + .05);
+  n.connect(bp).connect(ng).connect(out); n.start(t); n.stop(t + .06);
+  const end = t + b.decay * 1.1;
+  nodes.forEach(o => o.stop(end));
+  voices.push({ out, nodes, end });
+  // Maximaal 8 klanken tegelijk (16 in een concert): de oudste vervaagt snel
+  while (voices.length > (concert ? 16 : 8)) fadeVoice(voices.shift(), .4);
+  energy[i] = Math.min(1.25, energy[i] + force * .9);
+}
+
+function fadeVoice(v, tc) {
+  const t = ctx.currentTime;
+  v.out.gain.cancelScheduledValues(t);
+  v.out.gain.setTargetAtTime(0, t, tc);
+  v.nodes.forEach(o => { try { o.stop(t + tc * 6); } catch {} });
+}
+
+// manual: zelf roeren met vinger of muis; het volume volgt dan de snelheid van de cirkels van die vinger (zie frame)
+function startRub(i, manual = false, drag = null) {
+  initAudio();
+  stopRub(i);
+  const b = BOWLS[i], t = ctx.currentTime, nodes = [];
+  const g = ctx.createGain(); g.gain.setValueAtTime(0, t);
+  if (!manual) g.gain.setTargetAtTime(.3, t, 1.8);
+  // De stok rond de rand laat het volume zachtjes op en neer gaan
+  const am = ctx.createGain(); am.gain.value = .8;
+  const lfo = ctx.createOscillator(), lfoG = ctx.createGain();
+  lfo.frequency.value = .7; lfoG.gain.value = manual ? .06 : .2; lfo.connect(lfoG).connect(am.gain); lfo.start(); nodes.push(lfo);
+  am.connect(g).connect(bus);
+  const mix = b.crystal ? [[0, 1], [1, .08]] : [[0, 1], [1, .3], [2, .06]];
+  mix.forEach(([k, a]) => partialPair(b, b.partials[k][0], a, am, nodes));
+  // Zacht schuren van hout op metaal
+  const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+  n.buffer = noiseBuf; n.loop = true; bp.type = 'bandpass'; bp.frequency.value = b.f * 2; bp.Q.value = 3; ng.gain.value = manual ? 0 : .025;
+  n.connect(bp).connect(ng).connect(am); n.start(); nodes.push(n);
+  const r = { i, g, ng, nodes, manual, drag, level: 0, ang: 0 };
+  rubs.set(i, r);
+  updateRubBtn();
+  return r;
+}
+
+function stopRub(i) {
+  const r = rubs.get(i);
+  if (!r) return;
+  const b = BOWLS[i], t = ctx.currentTime;
+  r.g.gain.cancelScheduledValues(t);
+  r.g.gain.setValueAtTime(r.g.gain.value, t);
+  r.g.gain.setTargetAtTime(0, t, b.decay / 8);
+  r.nodes.forEach(o => o.stop(t + b.decay));
+  rubs.delete(i);
+  updateRubBtn();
+}
+function stopAllRubs() { [...rubs.keys()].forEach(stopRub); }
+const autoRubbing = () => [...rubs.values()].some(r => !r.manual);
+function updateRubBtn() { rubBtn.classList.toggle('on', autoRubbing()); }
+
+// De schalen die nu bespeeld worden: in een concert alle gekozen, anders de huidige
+const playing = () => concert ? concertSel : [current()];
+
+// W of de knop: laat alle bespeelde schalen vanzelf zingen; zingen ze al allemaal, dan stopt het
+function toggleSing() {
+  unlock();
+  const list = playing(), singing = (i) => rubs.has(i) && !rubs.get(i).manual;
+  if (list.length && list.every(singing)) list.forEach(stopRub);
+  else list.filter(i => !rubs.has(i)).forEach(i => startRub(i));   // een schaal die je zelf roert laten we met rust
+}
+function strikeAll() {
+  unlock();
+  playing().forEach(i => strike(i, .6, concert ? .8 : 1));
+}
+
+function hush() {
+  if (!ctx) return;
+  stopAllRubs();
+  while (voices.length) fadeVoice(voices.shift(), .6);
+  for (let k = 0; k < energy.length; k++) energy[k] = Math.min(energy[k], .3);
+}
+
+// ---------- Navigatie ----------
+const N = BOWLS.length;
+const mod = (k) => ((k % N) + N) % N;
+let target = Math.max(0, BOWLS.findIndex(b => b.id === store.get('bowl', ''))); // onbegrensde index, zodat de carrousel rond kan draaien
+let pos = target;
+const energy = new Array(N).fill(0);
+
+function go(step) {
+  stopAllRubs();
+  target += step;
+  showInfo();
+}
+function jump(i) {
+  const d = mod(i - target);
+  go(d > N / 2 ? d - N : d);
+}
+function current() { return mod(target); }
+
+function showInfo() {
+  const i = current(), b = BOWLS[i], t = LANGS[lang];
+  nameEl.textContent = t.type[b.type];
+  metaEl.textContent = `${b.note} · ${b.f.toFixed(1)} Hz · ${t.chakra[b.chakra]}`;
+  descEl.textContent = t.desc[b.id];
+  [...dotsEl.children].forEach((d, k) => d.classList.toggle('on', k === i));
+  store.set('bowl', b.id);
+}
+
+// Eerste keer: taal van de browser als we die hebben, anders Engels
+let lang = store.get('lang', null);
+if (!LANGS[lang]) lang = (navigator.languages || [navigator.language]).map(l => (l || '').slice(0, 2)).find(l => LANGS[l]) || 'en';
+
+function applyLang() {
+  const t = LANGS[lang];
+  document.documentElement.lang = lang;
+  document.title = t.app;
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = (concert && CONCERT_TEXT[el.dataset.t]) || el.dataset.t;
+    if (key.endsWith('keys')) el.innerHTML = t[key]; else el.textContent = t[key];
+  });
+  concertBtn.classList.toggle('on', concert);
+  renderChips();
+  document.getElementById('prev').title = t.prev;
+  document.getElementById('next').title = t.next;
+  document.querySelector('#lang optgroup').label = t.more;
+  [...dotsEl.children].forEach((d, k) => { d.title = `${k + 1}. ${t.type[BOWLS[k].type]} (${BOWLS[k].note})`; });
+  langEl.value = lang;
+  showInfo();
+}
+
+// ---------- Tekenen ----------
+const cv = document.getElementById('cv'), g2 = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+let layouts = [];   // bespeelbare schalen op het scherm: { i, cx, cy, R, depth }
+
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+}
+
+// ang: hoek van de stok op de rand, of null als de schaal niet gewreven wordt
+function drawBowl(b, cx, cy, R, e, time, alpha, ang) {
+  const ry = R * .27, depth = R * b.depth;
+  g2.save();
+  g2.globalAlpha = alpha;
+  cx += Math.sin(time * 70) * e * .8;
+
+  // Gloed
+  if (e > .01) {
+    const gl = g2.createRadialGradient(cx, cy + depth * .3, R * .2, cx, cy + depth * .3, R * 2);
+    gl.addColorStop(0, `rgba(255,210,140,${.22 * Math.min(1, e)})`); gl.addColorStop(1, 'rgba(255,210,140,0)');
+    g2.fillStyle = gl; g2.fillRect(cx - R * 2.2, cy - R * 2, R * 4.4, R * 4.4);
+  }
+  // Schaduw en kussen
+  const by = cy + depth;
+  g2.fillStyle = 'rgba(0,0,0,.45)';
+  g2.beginPath(); g2.ellipse(cx, by + R * .2, R * .95, R * .16, 0, 0, Math.PI * 2); g2.fill();
+  const cg = g2.createRadialGradient(cx - R * .2, by - R * .05, R * .1, cx, by + R * .05, R * .8);
+  cg.addColorStop(0, shade(b.cushion, 1.35)); cg.addColorStop(1, shade(b.cushion, .55));
+  g2.fillStyle = cg;
+  g2.beginPath(); g2.ellipse(cx, by + R * .06, R * .78, R * .2, 0, 0, Math.PI * 2); g2.fill();
+
+  // Stok achter de schaal
+  if (ang !== null && Math.sin(ang) < 0) drawStick(cx, cy, R, ry, ang);
+
+  // Lichaam
+  const bg = g2.createLinearGradient(cx - R, 0, cx + R, 0);
+  bg.addColorStop(0, b.metal[0]); bg.addColorStop(.3, b.metal[2]); bg.addColorStop(.5, b.metal[1]);
+  bg.addColorStop(.85, b.metal[0]); bg.addColorStop(1, shade(b.metal[0], .7));
+  g2.fillStyle = bg;
+  g2.beginPath();
+  g2.moveTo(cx - R, cy);
+  g2.bezierCurveTo(cx - R, cy + depth * .7, cx - R * .55, cy + depth, cx, cy + depth);
+  g2.bezierCurveTo(cx + R * .55, cy + depth, cx + R, cy + depth * .7, cx + R, cy);
+  g2.ellipse(cx, cy, R, ry, 0, 0, Math.PI, true);
+  g2.fill();
+  // Gegraveerde banden
+  if (!b.crystal) {
+    g2.strokeStyle = 'rgba(0,0,0,.28)'; g2.lineWidth = Math.max(1, R * .012);
+    for (const k of [.16, .22]) {
+      const w = R * (1 - k * k * .9);
+      g2.beginPath(); g2.ellipse(cx, cy + depth * k, w, ry * .95, 0, 0, Math.PI); g2.stroke();
+    }
+  }
+  // Binnenkant met trillend oppervlak
+  const ig = g2.createRadialGradient(cx, cy + ry * .3, R * .1, cx, cy, R);
+  ig.addColorStop(0, b.crystal ? shade(b.metal[1], .93) : shade(b.metal[0], .6));
+  ig.addColorStop(.75, b.crystal ? shade(b.metal[2], .96) : b.metal[1]);
+  ig.addColorStop(1, b.metal[2]);
+  g2.fillStyle = ig;
+  g2.beginPath(); g2.ellipse(cx, cy, R * .96, ry * .92, 0, 0, Math.PI * 2); g2.fill();
+  if (e > .01) {
+    g2.save();
+    g2.beginPath(); g2.ellipse(cx, cy, R * .94, ry * .9, 0, 0, Math.PI * 2); g2.clip();
+    const rings = 5;
+    for (let k = 0; k < rings; k++) {
+      const p = (time * .45 + k / rings) % 1;
+      g2.strokeStyle = b.crystal ? `rgba(150,170,200,${(1 - p) * Math.min(1, e) * .7})` : `rgba(255,235,190,${(1 - p) * Math.min(1, e) * .55})`;
+      g2.lineWidth = Math.max(1, R * .012);
+      g2.beginPath(); g2.ellipse(cx, cy, R * .94 * p, ry * .9 * p, 0, 0, Math.PI * 2); g2.stroke();
+    }
+    g2.restore();
+  }
+  // Rand
+  g2.strokeStyle = b.metal[2]; g2.lineWidth = Math.max(1.5, R * .025);
+  g2.beginPath(); g2.ellipse(cx, cy, R * .98, ry * .96, 0, 0, Math.PI * 2); g2.stroke();
+  g2.strokeStyle = 'rgba(255,255,255,.35)'; g2.lineWidth = 1;
+  g2.beginPath(); g2.ellipse(cx, cy, R * .98, ry * .96, 0, Math.PI * 1.05, Math.PI * 1.6); g2.stroke();
+
+  if (ang !== null && Math.sin(ang) >= 0) drawStick(cx, cy, R, ry, ang);
+  g2.restore();
+}
+
+function drawStick(cx, cy, R, ry, ang) {
+  const x = cx + Math.cos(ang) * R, y = cy + Math.sin(ang) * ry;
+  const len = R * .85, a = -Math.PI / 2 + Math.cos(ang) * .5;
+  const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
+  g2.lineCap = 'round';
+  g2.strokeStyle = '#3d2714'; g2.lineWidth = R * .09;
+  g2.beginPath(); g2.moveTo(x, y); g2.lineTo(x2, y2); g2.stroke();
+  g2.strokeStyle = '#8a5a2f'; g2.lineWidth = R * .06;
+  g2.beginPath(); g2.moveTo(x, y); g2.lineTo(x2, y2); g2.stroke();
+}
+
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.max(0, Math.min(255, Math.round(v * f))));
+  return `rgb(${c})`;
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.1, (now - last) / 1000); last = now;
+  const time = now / 1000;
+  pos += (target - pos) * Math.min(1, dt * 7);
+  if (Math.abs(target - pos) < .001) pos = target;
+  // Zelf roeren: rond 1 rondje per seconde zingt de schaal vol; ze bouwt langzaam op en zakt weg als je stilhoudt
+  for (const r of rubs.values()) {
+    if (!r.manual) continue;
+    const d = r.drag;
+    if (now - d.lastMove > 60) d.speed *= Math.exp(-dt * 5);
+    const want = Math.min(1.3, d.speed / (ROUND * .9));
+    r.level += (want - r.level) * Math.min(1, dt * (want > r.level ? .9 : 2.5));
+    const t = ctx.currentTime;
+    r.g.gain.setTargetAtTime(r.level * .32, t, .08);
+    r.ng.gain.setTargetAtTime(Math.min(1, want) * .035, t, .05);
+  }
+  for (let k = 0; k < N; k++) {
+    const r = rubs.get(k);
+    if (r) {
+      const goal = r.manual ? r.level * .9 : .75;
+      energy[k] += (goal - energy[k]) * Math.min(1, dt * (r.manual ? 2 : .6));
+    } else energy[k] *= Math.exp(-dt / (BOWLS[k].decay / 4));
+  }
+
+  g2.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g2.clearRect(0, 0, W, H);
+  layouts = [];
+  if (concert) drawConcert(time); else drawCarousel(time);
+  requestAnimationFrame(frame);
+}
+
+// Stok van een zingende schaal: volgt de vinger, of draait vanzelf (elke schaal in een eigen fase)
+function stickFor(i, time) {
+  const r = rubs.get(i);
+  return !r ? null : r.manual ? r.ang : time * ROUND * .7 + i * 1.3;
+}
+
+// Concert: de gekozen schalen naast elkaar, bij meer dan 4 in twee rijen
+function drawConcert(time) {
+  const n = concertSel.length;
+  if (!n) return;
+  const rows = n <= 4 ? 1 : 2, cols = Math.ceil(n / rows);
+  const cw = W / cols, ch = H / rows;
+  g2.font = `${Math.round(Math.max(11, Math.min(14, ch * .05)))}px "Segoe UI", system-ui, sans-serif`;
+  g2.textAlign = 'center';
+  concertSel.forEach((i, s) => {
+    const b = BOWLS[i], row = Math.floor(s / cols), col = s % cols;
+    const inRow = row === rows - 1 ? n - cols * (rows - 1) : cols;
+    const cx = (col + .5 + (cols - inRow) / 2) * cw;
+    const R = Math.min(cw * .36, ch * .36) * (.8 + .2 * b.size);
+    const cy = row * ch + ch * .3;
+    drawBowl(b, cx, cy, R, energy[i], time, 1, stickFor(i, time));
+    layouts.push({ i, cx, cy, R, depth: R * b.depth });
+    g2.fillStyle = 'rgba(243,233,220,.7)';
+    g2.fillText(`${s + 1} · ${b.note}`, cx, cy + R * b.depth + R * .45);
+  });
+}
+
+function drawCarousel(time) {
+  const base = Math.min(W * .26, H * .42), spacing = Math.max(base * 2.6, W * .36);
+  const cy = H * .42;
+  const order = [];
+  for (let k = Math.round(pos) - 2; k <= Math.round(pos) + 2; k++) order.push(k);
+  order.sort((a, b) => Math.abs(b - pos) - Math.abs(a - pos)); // dichtstbijzijnde als laatste
+  for (const k of order) {
+    const d = k - pos, ad = Math.abs(d);
+    if (ad > 2.2) continue;
+    const i = mod(k), b = BOWLS[i];
+    const scale = 1 - Math.min(ad, 1.5) * .38;
+    const R = base * b.size * scale;
+    const cx = W / 2 + d * spacing;
+    const alpha = Math.max(0, 1 - ad * .62);
+    drawBowl(b, cx, cy - R * .2, R, energy[i], time, alpha, stickFor(i, time));
+    if (ad < .5) layouts.push({ i, cx, cy: cy - R * .2, R, depth: R * b.depth });
+  }
+}
+
+// ---------- Bediening ----------
+const nameEl = document.getElementById('name'), metaEl = document.getElementById('meta');
+const descEl = document.getElementById('desc'), dotsEl = document.getElementById('dots');
+const vol = document.getElementById('vol'), verb = document.getElementById('verb');
+const rubBtn = document.getElementById('rub'), startEl = document.getElementById('start');
+
+const langEl = document.getElementById('lang');
+const concertBtn = document.getElementById('concert'), chipsEl = document.getElementById('chips');
+
+// Concert: tot 8 gekozen schalen tegelijk op het scherm. De app start in de stand van de vorige keer.
+const MAX_CONCERT = 8;
+const CONCERT_TEXT = { strike: 'strikeAll', rub: 'singAll', keys: 'ckeys' };
+let concert = store.get('mode', 'concert') === 'concert';
+let concertSel = store.get('concert', ['c3', 'e3', 'g3', 'crystal', 'rin'])
+  .map(id => BOWLS.findIndex(b => b.id === id)).filter(i => i >= 0).slice(0, MAX_CONCERT);
+document.body.classList.toggle('concert', concert);
+BOWLS.forEach((b, k) => {
+  const d = document.createElement('button');
+  d.onclick = () => jump(k);
+  dotsEl.appendChild(d);
+});
+langEl.onchange = () => { lang = langEl.value; store.set('lang', lang); applyLang(); langEl.blur(); };
+vol.value = store.get('vol', .8); verb.value = store.get('verb', .45);
+vol.oninput = () => { applyMix(); store.set('vol', +vol.value); };
+verb.oninput = () => { applyMix(); store.set('verb', +verb.value); };
+
+function unlock() {
+  initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  startEl.remove();
+}
+startEl.onclick = unlock;
+
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.getElementById('strike').onclick = strikeAll;
+rubBtn.onclick = toggleSing;
+document.getElementById('hush').onclick = hush;
+concertBtn.onclick = toggleConcert;
+
+// ---------- Concert ----------
+function toggleConcert() {
+  stopAllRubs();
+  concert = !concert;
+  document.body.classList.toggle('concert', concert);
+  store.set('mode', concert ? 'concert' : 'single');
+  applyLang();
+}
+
+function renderChips() {
+  const t = LANGS[lang];
+  chipsEl.innerHTML = '';
+  BOWLS.forEach((b, i) => {
+    const on = concertSel.includes(i), c = document.createElement('button');
+    c.className = 'chip' + (on ? ' on' : '');
+    c.disabled = !on && concertSel.length >= MAX_CONCERT;
+    c.textContent = `${b.note} · ${t.type[b.type]}`;
+    c.onclick = () => {
+      if (on) { stopRub(i); concertSel = concertSel.filter(k => k !== i); }
+      else concertSel = [...concertSel, i].sort((x, y) => x - y);   // van laag naar hoog, zodat 1 links staat
+      store.set('concert', concertSel.map(k => BOWLS[k].id));
+      renderChips();
+    };
+    chipsEl.appendChild(c);
+  });
+}
+
+// Tik op een schaal = aanslaan (hoe dichter bij de rand, hoe helderder).
+// Cirkels om een schaal trekken = zelf roeren; na ruim een kwart rondje begint ze te zingen.
+// Elke vinger heeft zijn eigen schaal, dus met meerdere vingers bespeel je meerdere schalen tegelijk.
+const drags = new Map();   // pointerId → beweging van die vinger of muis
+const ROUND = Math.PI * 2;
+
+function pointerAt(ev) {
+  const r = cv.getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+// Hoek rond het midden van de schaal; y iets uitgerekt zodat een ronde handbeweging gelijkmatig telt
+function angleAt(p, L) {
+  const dx = p.x - L.cx, dy = (p.y - (L.cy + L.depth * .35)) / .7;
+  return Math.hypot(dx, dy) < L.R * .15 ? null : Math.atan2(dy, dx);
+}
+// Dichtstbijzijnde schaal; in een concert alleen als je er echt bij in de buurt bent
+function hitBowl(p) {
+  let best = null, bd = Infinity;
+  for (const L of layouts) {
+    const d = Math.hypot(p.x - L.cx, (p.y - (L.cy + L.depth * .35)) / .7) / L.R;
+    if (d < bd) { bd = d; best = L; }
+  }
+  return best && (!concert || bd < 1.7) ? best : null;
+}
+const layoutOf = (i) => layouts.find(L => L.i === i);
+
+cv.addEventListener('pointerdown', (ev) => {
+  unlock();
+  const p = pointerAt(ev), L = hitBowl(p);
+  if (!L) return;
+  try { cv.setPointerCapture(ev.pointerId); } catch {}
+  const now = performance.now();
+  drags.set(ev.pointerId, { i: L.i, start: p, t0: now, moved: 0, last: p, lastA: angleAt(p, L), lastT: now, turned: 0, speed: 0, lastMove: 0 });
+});
+
+cv.addEventListener('pointermove', (ev) => {
+  const drag = drags.get(ev.pointerId), L = drag && layoutOf(drag.i);
+  if (!L) return;
+  const p = pointerAt(ev), now = performance.now();
+  drag.moved += Math.hypot(p.x - drag.last.x, p.y - drag.last.y);
+  drag.last = p;
+  const a = angleAt(p, L);
+  if (a === null || drag.lastA === null) { drag.lastA = a; drag.lastT = now; return; }
+  let d = a - drag.lastA;
+  if (d > Math.PI) d -= ROUND; else if (d < -Math.PI) d += ROUND;
+  const dt = Math.max(.008, (now - drag.lastT) / 1000);
+  drag.speed += (Math.abs(d) / dt - drag.speed) * .25;   // rad/s, afgevlakt
+  drag.turned += Math.abs(d);
+  drag.lastA = a; drag.lastT = now; drag.lastMove = now;
+  let r = rubs.get(drag.i);
+  if (drag.turned > 1.7 && !(r && r.drag === drag)) r = startRub(drag.i, true, drag);
+  if (r && r.drag === drag) r.ang = a;
+});
+
+function endDrag(ev) {
+  const drag = drags.get(ev.pointerId);
+  if (!drag) return;
+  drags.delete(ev.pointerId);
+  const r = rubs.get(drag.i), L = layoutOf(drag.i);
+  if (r && r.drag === drag) stopRub(drag.i);
+  else if (L && drag.moved < 10 && performance.now() - drag.t0 < 400) {
+    const { x, y } = drag.start, { cx, cy, R, depth } = L;
+    if (x > cx - R * 1.1 && x < cx + R * 1.1 && y > cy - R * .4 && y < cy + depth * 1.15) {
+      strike(drag.i, .2 + Math.min(1, Math.abs(x - cx) / R) * .8);
+    }
+  }
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+let digits = '', digitTimer = 0;
+function typeDigit(k) {
+  clearTimeout(digitTimer);
+  digits += k;
+  const n = +digits;
+  if (n >= 1 && n <= N) jump(n - 1);
+  if (n === 0 || n * 10 > N) digits = '';
+  else digitTimer = setTimeout(() => { digits = ''; }, 800);
+}
+
+document.addEventListener('keydown', (ev) => {
+  if ((ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') && ev.key.startsWith('Arrow')) return;
+  if (ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  // Cijfers via ev.code, zodat ze ook met Shift en op een AZERTY-toetsenbord werken
+  const k = ev.key, digit = /^(?:Digit|Numpad)([0-9])$/.exec(ev.code);
+  if (k === 'c' || k === 'C') toggleConcert();
+  else if (k === ' ' || k === 'Enter') { if (!ev.repeat) strikeAll(); }
+  else if (k === 'w' || k === 'W') toggleSing();
+  else if (k === 's' || k === 'S') hush();
+  else if (concert && digit) {
+    // Concert: cijfer = die schaal aanslaan, Shift + cijfer = die schaal laten zingen of stoppen
+    const i = concertSel[+digit[1] - 1];
+    if (i === undefined) return;
+    unlock();
+    if (ev.shiftKey) rubs.has(i) ? stopRub(i) : startRub(i);
+    else if (!ev.repeat) strike(i);
+  }
+  else if (concert) return;
+  else if (k === 'ArrowLeft' || k === '<' || k === ',') go(-1);
+  else if (k === 'ArrowRight' || k === '>' || k === '.') go(1);
+  else if (digit) typeDigit(digit[1]);
+  else return;
+  ev.preventDefault();
+});
+
+window.addEventListener('resize', resize);
+resize();
+applyLang();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
