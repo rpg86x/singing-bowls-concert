@@ -1,4 +1,4 @@
-# Singing Bowls Concert 1.0
+# Singing Bowls Concert 1.1
 
 Give your own singing bowl concert. Pick up to 8 of 14 bowls, put them side by side and play them all at once: strike them, stir them with several fingers, or let them sing together. Every sound is synthesized live with the Web Audio API, so there are no audio files and the app needs no internet.
 
@@ -63,3 +63,9 @@ Geef je eigen klankschalenconcert. Kies tot 8 van de 14 schalen en bespeel ze te
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+
+## What's new in 1.1
+
+- **Songs from [Song Library](https://github.com/rpg86x/song-library):** pick a song under the bowls and press ▶ Listen or 🎯 Practice. The concert sets up exactly the bowls the song needs (up to 8), and the bowl to strike gets a **red ring** (the next one a dashed ring). Mistakes are counted; *Strike all* does not count. 96 of the 143 songs fit the bowls' fixed pitches.
+- Song Library opens a song here directly (`index.html?song=<id>&mode=practice|listen`, or the intent extras `song` and `mode` on Android). Keep `songs.js` next to `index.html`.

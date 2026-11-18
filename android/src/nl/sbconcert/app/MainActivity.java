@@ -34,8 +34,25 @@ public final class MainActivity extends Activity {
                 return true;
             }
         });
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl("file:///android_asset/index.html" + songQuery(getIntent()));
         setContentView(web);
+    }
+
+    // Song Library opent het concert met een liedje: extra's "song" en "mode" (practice of listen)
+    private static String songQuery(Intent i) {
+        String song = i == null ? null : i.getStringExtra("song");
+        if (song == null || !song.matches("[a-z0-9]+")) return "";
+        String mode = "listen".equals(i.getStringExtra("mode")) ? "listen" : "practice";
+        return "?song=" + song + "&mode=" + mode;
+    }
+
+    @Override protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+        String q = songQuery(i);
+        if (q.isEmpty()) return;
+        String song = i.getStringExtra("song"), mode = q.endsWith("listen") ? "listen" : "practice";
+        web.evaluateJavascript("window.openSong && openSong('" + song + "','" + mode + "')", null);
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {

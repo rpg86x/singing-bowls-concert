@@ -80,6 +80,14 @@
     #name { font-size: 24px; }
     footer .keys { display: none; }
   }
+  /* Liedjes uit Song Library */
+  #songBar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 8px 16px 0; }
+  #songBar[hidden] { display: none; }
+  #songSel { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 14px; max-width: 60vw; }
+  #songSel option, #songSel optgroup { background: var(--bg2); }
+  #songBar .btn.on { background: rgba(255, 77, 77, .25); border-color: #ff4d4d; color: var(--text); }
+  #songStatus { min-width: 140px; font-size: 13px; color: var(--muted); text-align: center; }
+  #songStatus.good { color: #8fd3b0; } #songStatus.bad { color: #ff7a7a; }
 </style>
 </head>
 <body>
@@ -115,6 +123,14 @@
   <div id="chips"></div>
 </div>
 
+<div id="songBar" hidden>
+  <select id="songSel"></select>
+  <button class="btn" id="songListen"></button>
+  <button class="btn" id="songPractice"></button>
+  <button class="btn" id="songStop">■</button>
+  <span id="songStatus"></span>
+</div>
+
 <div id="controls">
   <button class="btn" id="concert"><span data-t="concert"></span> <kbd>C</kbd></button>
   <button class="btn" id="strike"><span data-t="strike"></span> <kbd data-t="space"></kbd></button>
@@ -126,9 +142,10 @@
 
 <footer>
   <span class="keys" data-t="keys"></span>
-  <span><a href="https://urbantechmonk.gumroad.com/coffee" target="_blank" rel="noopener" data-t="donate"></a> · <span data-t="app"></span> 1.0</span>
+  <span><a href="https://urbantechmonk.gumroad.com/coffee" target="_blank" rel="noopener" data-t="donate"></a> · <span data-t="app"></span> 1.1</span>
 </footer>
 
+<script src="songs.js"></script>
 <script>
 // ---------- Schalen ----------
 // partials: [frequentieverhouding, sterkte, nagalm-factor t.o.v. grondtoon]
@@ -170,6 +187,7 @@ const CKEYS = (st, num, sing, multi) => `<kbd>1</kbd>–<kbd>8</kbd> ${st} · <k
 const KEYS = (or, sw, ch, rim) => `<kbd>&lt;</kbd> <kbd>&gt;</kbd> ${or} <kbd>←</kbd> <kbd>→</kbd> ${sw} · <kbd>1</kbd>–<kbd>${BOWLS.length}</kbd> ${ch} · ${rim}`;
 const LANGS = {
   en: {
+    song: { listen: '▶ Listen', practice: '🎯 Practice', stop: 'Stop song', note: 'Note', of: 'of', done: 'Well done! Mistakes:', miss: 'Not that one: strike the bowl with the red ring', pick: 'Pick a song to listen or practice', nofit: 'This song does not fit the bowls' },
     app: 'Singing Bowls Concert', prev: 'Previous bowl (< or ←)', next: 'Next bowl (> or →)', start: 'Click to open the singing bowls',
     strike: 'Strike', space: 'space', rub: 'Let it sing', hush: 'Silence', volume: 'Volume', reverb: 'Reverb',
     keys: KEYS('or', 'switch', 'choose', 'tap the bowl to strike it · draw circles around it to make it sing'), donate: '☕ Buy me a coffee', more: 'More languages',
@@ -195,6 +213,7 @@ const LANGS = {
     },
   },
   nl: {
+    song: { listen: '▶ Luisteren', practice: '🎯 Oefenen', stop: 'Liedje stoppen', note: 'Noot', of: 'van', done: 'Goed gedaan! Fouten:', miss: 'Niet die: sla de schaal met de rode ring aan', pick: 'Kies een liedje om te luisteren of te oefenen', nofit: 'Dit liedje past niet op de schalen' },
     app: 'Singing Bowls Concert', prev: 'Vorige schaal (< of ←)', next: 'Volgende schaal (> of →)', start: 'Klik om de klankschalen te openen',
     strike: 'Aanslaan', space: 'spatie', rub: 'Laten zingen', hush: 'Stilte', volume: 'Volume', reverb: 'Galm',
     keys: KEYS('of', 'wisselen', 'kiezen', 'tik op de schaal om aan te slaan · trek er cirkels omheen om haar te laten zingen'), donate: '☕ Trakteer me op een koffie', more: 'Meer talen',
@@ -220,6 +239,7 @@ const LANGS = {
     },
   },
   de: {
+    song: { listen: '▶ Anhören', practice: '🎯 Üben', stop: 'Lied stoppen', note: 'Note', of: 'von', done: 'Gut gemacht! Fehler:', miss: 'Nicht diese: schlage die Schale mit dem roten Ring an', pick: 'Wähle ein Lied zum Anhören oder Üben', nofit: 'Dieses Lied passt nicht auf die Schalen' },
     app: 'Singing Bowls Concert', prev: 'Vorherige Schale (< oder ←)', next: 'Nächste Schale (> oder →)', start: 'Klicken, um die Klangschalen zu öffnen',
     strike: 'Anschlagen', space: 'Leertaste', rub: 'Singen lassen', hush: 'Stille', volume: 'Lautstärke', reverb: 'Hall',
     keys: KEYS('oder', 'wechseln', 'wählen', 'Schale antippen zum Anschlagen · Kreise um sie ziehen, damit sie singt'), donate: '☕ Spendier mir einen Kaffee', more: 'Weitere Sprachen',
@@ -245,6 +265,7 @@ const LANGS = {
     },
   },
   fr: {
+    song: { listen: '▶ Écouter', practice: '🎯 S\'exercer', stop: 'Arrêter', note: 'Note', of: 'sur', done: 'Bravo ! Erreurs :', miss: 'Pas celui-là : frappez le bol à l\'anneau rouge', pick: 'Choisissez une chanson à écouter ou à travailler', nofit: 'Cette chanson ne tient pas sur les bols' },
     app: 'Singing Bowls Concert', prev: 'Bol précédent (< ou ←)', next: 'Bol suivant (> ou →)', start: 'Cliquez pour ouvrir les bols chantants',
     strike: 'Frapper', space: 'espace', rub: 'Faire chanter', hush: 'Silence', volume: 'Volume', reverb: 'Réverb',
     keys: KEYS('ou', 'changer', 'choisir', 'touchez le bol pour le frapper · tracez des cercles autour pour le faire chanter'), donate: '☕ Offrez-moi un café', more: 'Autres langues',
@@ -270,6 +291,7 @@ const LANGS = {
     },
   },
   es: {
+    song: { listen: '▶ Escuchar', practice: '🎯 Practicar', stop: 'Detener', note: 'Nota', of: 'de', done: '¡Muy bien! Errores:', miss: 'Ese no: golpea el cuenco con el anillo rojo', pick: 'Elige una canción para escuchar o practicar', nofit: 'Esta canción no cabe en los cuencos' },
     app: 'Singing Bowls Concert', prev: 'Cuenco anterior (< o ←)', next: 'Cuenco siguiente (> o →)', start: 'Haz clic para abrir los cuencos',
     strike: 'Golpear', space: 'espacio', rub: 'Hacer cantar', hush: 'Silencio', volume: 'Volumen', reverb: 'Reverb',
     keys: KEYS('o', 'cambiar', 'elegir', 'toca el cuenco para golpearlo · dibuja círculos a su alrededor para hacerlo cantar'), donate: '☕ Invítame a un café', more: 'Más idiomas',
@@ -354,6 +376,7 @@ function partialPair(b, ratio, amp, out, nodes) {
 }
 
 function strike(i, brightness = .6, force = 1) {
+  if (typeof songHit === 'function') songHit(i);
   initAudio();
   const b = BOWLS[i], t = ctx.currentTime, nodes = [];
   const out = ctx.createGain(); out.connect(bus);
@@ -436,7 +459,11 @@ function toggleSing() {
 }
 function strikeAll() {
   unlock();
+  // Alles tegelijk aanslaan telt niet als noot bij het oefenen
+  const p = songState.mode;
+  songState.mode = 'idle';
   playing().forEach(i => strike(i, .6, concert ? .8 : 1));
+  songState.mode = p;
 }
 
 function hush() {
@@ -487,6 +514,7 @@ function applyLang() {
   });
   concertBtn.classList.toggle('on', concert);
   renderChips();
+  songLabels();
   document.getElementById('prev').title = t.prev;
   document.getElementById('next').title = t.next;
   document.querySelector('#lang optgroup').label = t.more;
@@ -650,6 +678,14 @@ function drawConcert(time) {
     const cy = row * ch + ch * .3;
     drawBowl(b, cx, cy, R, energy[i], time, 1, stickFor(i, time));
     layouts.push({ i, cx, cy, R, depth: R * b.depth });
+    if (i === songTarget || i === songNext) {
+      g2.save();
+      g2.strokeStyle = i === songTarget ? `rgba(255,70,70,${.75 + Math.sin(time * 6) * .25})` : 'rgba(255,140,120,.8)';
+      g2.lineWidth = Math.max(3, R * (i === songTarget ? .07 : .035));
+      if (i !== songTarget) g2.setLineDash([R * .12, R * .08]);
+      g2.beginPath(); g2.ellipse(cx, cy + R * b.depth * .35, R * 1.18, R * (.3 + b.depth * .55), 0, 0, Math.PI * 2); g2.stroke();
+      g2.restore();
+    }
     g2.fillStyle = 'rgba(243,233,220,.7)';
     g2.fillText(`${s + 1} · ${b.note}`, cx, cy + R * b.depth + R * .45);
   });
@@ -846,10 +882,134 @@ document.addEventListener('keydown', (ev) => {
   ev.preventDefault();
 });
 
+// ---------- Liedjes uit Song Library (songs.js) ----------
+// De schalen hebben vaste tonen; een liedje past als al zijn noten (na verschuiven) op hoogstens 8 schalen liggen.
+const LIB = window.SONG_LIBRARY || null;
+const bowlMidi = (b) => Math.round(69 + 12 * Math.log2(b.f / 440));
+const PITCH = new Map();     // toonhoogte → schaal; bij twee schalen op dezelfde toon wint de eerste (Tibetaans boven Rose)
+BOWLS.forEach((b, i) => { const m = bowlMidi(b); if (!PITCH.has(m)) PITCH.set(m, i); });
+const noteMidi = (n) => { const m = n.match(/^([A-G])(#|b)?(\d)$/); return 12 * (+m[3] + 1) + { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); };
+const SONGS = LIB ? LIB.songs.map(([id, cat, bpm, str]) => {
+  const items = str.split(' ').map(tok => { const [n, d] = tok.split(':'); return { n, rest: n === 'R', beats: d ? +d : 1 }; });
+  return { id, cat, bpm, items, notes: items.filter(x => !x.rest) };
+}) : [];
+function bowlsFor(sg) {
+  const raw = sg.notes.map(x => noteMidi(x.n));
+  for (let sh = -36; sh <= 12; sh++) {
+    const idx = raw.map(m => PITCH.get(m + sh));
+    if (idx.every(k => k !== undefined) && new Set(idx).size <= MAX_CONCERT) return idx;
+  }
+  return null;
+}
+const songState = { mode: 'idle', song: null, slots: [], pos: 0, misses: 0, timers: [] };
+let songTarget = -1, songNext = -1;
+const sEl = (id) => document.getElementById(id);
+const songName = (id) => (LIB.names[lang] || {})[id] || LIB.names.en[id];
+const sT = () => LANGS[lang].song;
+function songStatus(text, cls) { sEl('songStatus').textContent = text; sEl('songStatus').className = cls || ''; }
+function songMark() {
+  const live = songState.mode !== 'idle';
+  songTarget = live ? songState.slots[songState.pos] : -1;
+  songNext = live && songState.mode === 'practice' ? songState.slots[songState.pos + 1] ?? -1 : -1;
+}
+function songButtons() {
+  sEl('songListen').textContent = sT().listen;
+  sEl('songPractice').textContent = sT().practice;
+  sEl('songStop').title = sT().stop;
+  sEl('songListen').classList.toggle('on', songState.mode === 'listen');
+  sEl('songPractice').classList.toggle('on', songState.mode === 'practice');
+}
+function songStop(quiet) {
+  songState.timers.forEach(clearTimeout); songState.timers = [];
+  songState.mode = 'idle';
+  songMark(); songButtons();
+  if (!quiet) songStatus(sT().pick);
+}
+function songProgress() { songStatus(`${sT().note} ${Math.min(songState.pos + 1, songState.slots.length)} ${sT().of} ${songState.slots.length}`); }
+// Zet het concert klaar met precies de schalen die het liedje nodig heeft
+function songPrepare() {
+  const sg = SONGS[+sEl('songSel').value], slots = sg && bowlsFor(sg);
+  if (!slots) return false;
+  Object.assign(songState, { song: sg, slots, pos: 0, misses: 0 });
+  stopAllRubs();
+  concertSel = [...new Set(slots)].sort((a, b) => bowlMidi(BOWLS[a]) - bowlMidi(BOWLS[b]));
+  if (!concert) { concert = true; document.body.classList.add('concert'); store.set('mode', 'concert'); applyLang(); }
+  renderChips();
+  return true;
+}
+function songPractice() {
+  unlock(); songStop(true);
+  if (!songPrepare()) return;
+  songState.mode = 'practice';
+  songMark(); songButtons(); songProgress();
+}
+function songListen() {
+  unlock(); songStop(true);
+  if (!songPrepare()) return;
+  songState.mode = 'listen';
+  songMark(); songButtons(); songProgress();
+  const beat = 60 / songState.song.bpm * 1000;
+  let at = 300, k = 0;
+  songState.song.items.forEach(x => {
+    if (!x.rest) {
+      const n = k++;
+      songState.timers.push(setTimeout(() => { songState.pos = n; songMark(); songProgress(); strike(songState.slots[n], .5, .8); }, at));
+    }
+    at += x.beats * beat;
+  });
+  songState.timers.push(setTimeout(() => songStop(), at + 600));
+}
+function songHit(i) {
+  if (songState.mode !== 'practice') return;
+  if (i === songState.slots[songState.pos]) {
+    songState.pos++;
+    if (songState.pos >= songState.slots.length) {
+      const m = songState.misses;
+      songStop(true);
+      songStatus(`${sT().done} ${m}`, 'good');
+      return;
+    }
+    songMark(); songProgress();
+  } else {
+    songState.misses++;
+    songStatus(sT().miss, 'bad');
+  }
+}
+function songLabels() {
+  if (!LIB) return;
+  sEl('songBar').hidden = false;
+  const sel = sEl('songSel'), v = sel.value || store.get('song', '');
+  sel.innerHTML = '';
+  LIB.cats.forEach(cat => {
+    const g = document.createElement('optgroup');
+    g.label = (LIB.catNames[lang] || LIB.catNames.en)[cat];
+    SONGS.forEach((sg, i) => { if (sg.cat === cat && bowlsFor(sg)) g.appendChild(new Option('🎵 ' + songName(sg.id), i)); });
+    if (g.children.length) sel.appendChild(g);
+  });
+  if (v !== '') sel.value = v;
+  songButtons();
+  if (songState.mode === 'idle') songStatus(sT().pick);
+}
+sEl('songSel').onchange = () => { store.set('song', sEl('songSel').value); songStop(); sEl('songSel').blur(); };
+sEl('songListen').onclick = songListen;
+sEl('songPractice').onclick = songPractice;
+sEl('songStop').onclick = () => songStop();
+
 window.addEventListener('resize', resize);
 resize();
 applyLang();
 requestAnimationFrame(frame);
+
+// Openen vanuit Song Library: index.html?song=<id>&mode=practice|listen
+window.openSong = function (id, mode) {
+  const i = SONGS.findIndex(sg => sg.id === id);
+  if (i < 0) return;
+  sEl('songSel').value = i;
+  if (!bowlsFor(SONGS[i])) { songStatus(sT().nofit, 'bad'); return; }
+  if (mode === 'listen') songListen(); else songPractice();
+};
+const wanted = new URLSearchParams(location.search);
+if (wanted.get('song')) openSong(wanted.get('song'), wanted.get('mode'));
 </script>
 </body>
 </html>
