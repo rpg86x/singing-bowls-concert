@@ -142,7 +142,7 @@
 
 <footer>
   <span class="keys" data-t="keys"></span>
-  <span><a href="https://urbantechmonk.gumroad.com/coffee" target="_blank" rel="noopener" data-t="donate"></a> · <span data-t="app"></span> 1.1</span>
+  <span><a href="https://urbantechmonk.gumroad.com/coffee" target="_blank" rel="noopener" data-t="donate"></a> · <span data-t="app"></span> 1.2</span>
 </footer>
 
 <script src="songs.js"></script>
@@ -329,9 +329,10 @@ let ctx, bus, master, wet, noiseBuf;
 const voices = [];          // aangeslagen klanken, oudste eerst
 const rubs = new Map();     // zingende schalen: index → wrijfklank (in een concert meerdere tegelijk)
 
+const ANDROID = /Android/i.test(navigator.userAgent), LEAD = ANDROID ? .02 : 0; // 1.2: Android WebView haperde (buffer-underruns): grotere buffer, kortere galm, noten 20 ms vooruit
 function initAudio() {
   if (ctx) return;
-  ctx = new AudioContext();
+  ctx = new AudioContext({ latencyHint: ANDROID ? 'playback' : 'interactive' });
   master = ctx.createGain();
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = -10; comp.ratio.value = 4;
@@ -339,7 +340,7 @@ function initAudio() {
   bus = ctx.createGain();
   const dry = ctx.createGain(); dry.gain.value = .8;
   bus.connect(dry).connect(master);
-  const conv = ctx.createConvolver(); conv.buffer = impulse(4.5);
+  const conv = ctx.createConvolver(); conv.buffer = impulse(ANDROID ? 2.5 : 4.5);
   wet = ctx.createGain();
   bus.connect(conv).connect(wet).connect(master);
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
@@ -378,7 +379,7 @@ function partialPair(b, ratio, amp, out, nodes) {
 function strike(i, brightness = .6, force = 1) {
   if (typeof songHit === 'function') songHit(i);
   initAudio();
-  const b = BOWLS[i], t = ctx.currentTime, nodes = [];
+  const b = BOWLS[i], t = ctx.currentTime + LEAD, nodes = [];
   const out = ctx.createGain(); out.connect(bus);
   b.partials.forEach(([ratio, amp, df], k) => {
     const env = ctx.createGain(), a = amp * force * .32 * (k ? .35 + brightness * 1.3 : 1);
@@ -412,7 +413,7 @@ function fadeVoice(v, tc) {
 function startRub(i, manual = false, drag = null) {
   initAudio();
   stopRub(i);
-  const b = BOWLS[i], t = ctx.currentTime, nodes = [];
+  const b = BOWLS[i], t = ctx.currentTime + LEAD, nodes = [];
   const g = ctx.createGain(); g.gain.setValueAtTime(0, t);
   if (!manual) g.gain.setTargetAtTime(.3, t, 1.8);
   // De stok rond de rand laat het volume zachtjes op en neer gaan
