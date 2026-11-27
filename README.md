@@ -4,6 +4,14 @@ Give your own singing bowl concert. Pick up to 8 of 14 bowls, put them side by s
 
 ![Singing Bowls Concert](logo.png)
 
+## Phone or tablet?
+
+One app for phones and tablets: the same APK installs on both and adapts to the screen by itself.
+
+- **Phone:** works fine, but with 8 bowls the bowls are small; 4–5 bowls play best.
+- **Tablet:** the best fit - all 8 bowls are large enough to play with several fingers.
+
+
 ## Concert mode
 
 1. Choose up to 8 bowls from the list below the stage. They line up from low to high and are numbered 1–8.
